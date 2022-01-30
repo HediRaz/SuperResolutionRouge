@@ -2,6 +2,44 @@ import tensorflow as tf
 from tensorflow import keras
 
 
+def create_model_D(dim):
+
+    x_in = tf.keras.layers.Input(shape = dim)
+
+    x = keras.layers.Conv2D(64, 3, padding='same')(x_in)
+    x = keras.layers.LeakyReLU()(x)
+    #64
+    x = keras.layers.Conv2D(64, 3, 2, padding='same')(x)
+    x = keras.layers.BatchNormalization()(x)
+    x = keras.layers.LeakyReLU()(x)
+    #128
+    x = keras.layers.Conv2D(128, 3, padding='same')(x)
+    x = keras.layers.BatchNormalization()(x)
+    x = keras.layers.LeakyReLU()(x)
+    x = keras.layers.Conv2D(128, 3,2, padding='same')(x)
+    x = keras.layers.BatchNormalization()(x)
+    x = keras.layers.LeakyReLU()(x)
+    #256
+    x = keras.layers.Conv2D(256, 3, padding='same')(x)
+    x = keras.layers.BatchNormalization()(x)
+    x = keras.layers.LeakyReLU()(x)
+    x = keras.layers.Conv2D(256, 3, 2, padding='same')(x)
+    x = keras.layers.BatchNormalization()(x)
+    x = keras.layers.LeakyReLU()(x)
+    #512
+    x = keras.layers.Conv2D(512, 3, padding='same')(x)
+    x = keras.layers.BatchNormalization()(x)
+    x = keras.layers.LeakyReLU()(x)
+    x = keras.layers.Conv2D(512, 3, 2, padding='same')(x)
+    x = keras.layers.BatchNormalization()(x)
+    x = keras.layers.LeakyReLU()(x)
+    x = keras.layers.Dense(1024)(x)
+    x = keras.layers.LeakyReLU()(x)
+    x = keras.layers.Dense(1)(x)
+    x_out = keras.activations.sigmoid(x)
+    return keras.Model(inputs=x_in , outputs=x_out)
+    
+
 
 def create_model(B,dim):
 
@@ -32,7 +70,21 @@ def create_model(B,dim):
 
     return keras.Model(inputs=x_in , outputs=x_out)
 
+def train_fn(train_dl, epochs, generator, discriminator, lossIn, optimizer_gen, optimizer_dis):
+    def lossg(x):
+        return tf.log(1-x)
+    def lossd(x, y):
+        return -tf.log(1-x) - tf.log(y)
+        
+    for x, y in train_dl:
+        with tf.GradientTape() as tape_gen, tf.GradientTape() as tape_dis:
+            x = generator(x)
+            x_d = discriminator(x)
+            y_d = discriminator(y)
+            lossD = tf.mean(lossd(x_d,y_d))
+            lossG = tf.mean(lossg(x))
 
-def train_model(x_train, y_train,epochs, model, lossIn, batch_size):
-    model.compile(optimizer = 'adam', loss = lossIn)
-    return model.fit(x_train, y_train, epochs = epochs, batch_size=batch_size)
+        grads_gen = tape_gen.gradient(lossG, generator.parameters())
+        grads_dis = tape_dis.gradient(lossD, discriminator.parameters())
+
+        optimizer_gen.apply_gradients(zip(grads_gen, generator.parameters()))

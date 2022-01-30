@@ -1,22 +1,36 @@
-from models import *
-from traitementimages import *
+from models import create_model
+from utils_images import CustomDataGen, create_dataset
 import tensorflow as tf
+import numpy as np
+from utils_test import test_model
+from VGG16 import loss_gg
+
+
+EPOCHS = 1
+BATCH_SIZE = 16
+train_folder_path = "Dataset/imagenet/train_processed_128"
+val_folder_path = "Dataset/imagenet/val_processed_128"
 
 B = 5
-epochs = 5
-loss = tf.keras.losses.MeanSquaredError()
-dataset = "Dataset_Test"
-a, b = min_dim(dataset)
-dim_entrainement=(a//4,b//4, 3)
-print(dim_entrainement)
-model = create_model(B, dim_entrainement)
-img_entrainement = crop_dataset_upscale(dataset)
-img_downscale = resize_dataset(dataset)
+# loss = tf.keras.losses.MeanSquaredError()
+loss = loss_gg
+optimizer = tf.keras.optimizers.Adam()
 
-img_entrainement = tf.convert_to_tensor(img_entrainement)
-img_downscale = tf.convert_to_tensor(img_downscale)
+train_dataset = create_dataset(train_folder_path, batch_size=BATCH_SIZE, input_size=(128, 128, 3), shuffle=True)
+val_dataset = create_dataset(val_folder_path, batch_size=BATCH_SIZE, input_size=(128, 128, 3), shuffle=True)
 
-train_model(img_downscale, img_entrainement, epochs, model, loss, batch_size=128)
+model = create_model(B, (128//4, 128//4, 3))
+model.build((None, None, None, 3))
+psnr = lambda x, y: tf.image.psnr(x, y, 1)
+model.compile(
+    optimizer=optimizer,
+    loss=loss,
+    metrics=[psnr]
+)
 
-afficher(img_entrainement[0])
-afficher(model.predict([img_downscale[0]])[0])
+model.fit(train_dataset, epochs=EPOCHS, validation_data=val_dataset)
+model.save_weights("SavedModels/generator")
+
+print("Test")
+test_images = np.array([a[1][0].numpy() for a in val_dataset])
+test_model(model, test_images)
