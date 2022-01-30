@@ -71,20 +71,25 @@ def create_model(B,dim):
     return keras.Model(inputs=x_in , outputs=x_out)
 
 def train_fn(train_dl, epochs, generator, discriminator, lossIn, optimizer_gen, optimizer_dis):
+    lmbd = 0.1
     def lossg(x):
-        return tf.log(1-x)
+        return tf.log(1-x) 
     def lossd(x, y):
         return -tf.log(1-x) - tf.log(y)
-        
-    for x, y in train_dl:
-        with tf.GradientTape() as tape_gen, tf.GradientTape() as tape_dis:
-            x = generator(x)
-            x_d = discriminator(x)
-            y_d = discriminator(y)
-            lossD = tf.mean(lossd(x_d,y_d))
-            lossG = tf.mean(lossg(x))
+    for _ in range(epochs):
+        for k, (x, y) in enumerate(train_dl):
+            with tf.GradientTape() as tape_gen, tf.GradientTape() as tape_dis:
+                x = generator(x)
+                x_d = discriminator(x)
+                y_d = discriminator(y)
+                lossD = tf.mean(lossd(x_d,y_d))
+                lossG = lmbd * tf.mean(lossg(x)) + lossIn(y, x)
 
-        grads_gen = tape_gen.gradient(lossG, generator.parameters())
-        grads_dis = tape_dis.gradient(lossD, discriminator.parameters())
+            grads_gen = tape_gen.gradient(lossG, generator.trainable_weights)
+            grads_dis = tape_dis.gradient(lossD, discriminator.trainable_weights)
 
-        optimizer_gen.apply_gradients(zip(grads_gen, generator.parameters()))
+            optimizer_gen.apply_gradients(zip(grads_gen, generator.trainable_weights))
+            optimizer_dis.apply_gradients(zip(grads_dis, generator.trainable_weights))
+
+            if k % 30 == 0:
+                print(k, lossD, lossG)
