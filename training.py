@@ -11,7 +11,7 @@ BATCH_SIZE = 16
 train_folder_path = "Dataset/imagenet/train_processed_128"
 val_folder_path = "Dataset/imagenet/val_processed_128"
 
-B = 5
+B = 16
 # loss = tf.keras.losses.MeanSquaredError()
 loss = loss_gg
 optimizer = tf.keras.optimizers.Adam()
