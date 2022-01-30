@@ -16,6 +16,7 @@ B = 5
 loss = loss_gg
 optimizer = tf.keras.optimizers.Adam()
 
+
 train_dataset = create_dataset(train_folder_path, batch_size=BATCH_SIZE, input_size=(128, 128, 3), shuffle=True)
 val_dataset = create_dataset(val_folder_path, batch_size=BATCH_SIZE, input_size=(128, 128, 3), shuffle=True)
 
@@ -25,10 +26,11 @@ discriminator = create_model_D((128, 128, 3))
 generator.build((None, None, None, 3))
 discriminator.build((None, 128, 128, 3))
 psnr = lambda x, y: tf.image.psnr(x, y, 1)
+optimizer_dis = tf.keras.optimizers.Adam()
+optimizer_gen = tf.keras.optimizers.Adam()
 
-train_fn(train_dataset, EPOCHS, generator, discriminator, optimizer, psnr)
-model.save_weights("SavedModels/generator")
+train_fn(train_dataset, EPOCHS, generator, discriminator,loss, optimizer_gen, optimizer_dis)
 
 print("Test")
 test_images = np.array([a[1][0].numpy() for a in val_dataset])
-test_model(model, test_images)
+test_model(generator, test_images)
